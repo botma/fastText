@@ -134,6 +134,8 @@ void ProductQuantizer::train(int32_t n, const real * x) {
   std::iota(perm.begin(), perm.end(), 0);
   auto d = dsub_;
   auto np = std::min(n, max_points_);
+
+  // random choose np points, get their same vec slice
   real* xslice = new real[np * dsub_];
   for (auto m = 0; m < nsubq_; m++) {
     if (m == nsubq_-1) {d = lastdsub_;}
