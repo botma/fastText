@@ -263,7 +263,7 @@ void FastText::supervised(Model& model, real lr,
     std::vector<int32_t> src(line);
     model.update(line, labels[0], lr);
     for (int i =1; i < labels.size(); i++){
-      src.push_back(labels[i - 1]);
+      src.push_back(labels[i - 1] + dict_->nwords());
       model.update(line, labels[i], lr);
     }
   }else {

@@ -17,6 +17,8 @@
 #include <random>
 #include <memory>
 #include <unordered_map>
+#include<set>
+#include<map>
 
 #include "args.h"
 #include "real.h"
@@ -33,6 +35,12 @@ struct entry {
   std::vector<int32_t> subwords;
 };
 
+struct CatNode{
+	std::string label;
+	int32_t level;
+	std::set<std::string> childs;
+};
+
 class Dictionary {
   private:
     static const int32_t MAX_VOCAB_SIZE = 30000000;
@@ -46,6 +54,7 @@ class Dictionary {
     std::shared_ptr<Args> args_;
     std::vector<int32_t> word2int_;
     std::vector<entry> words_;
+    std::map<std::string, CatNode> labelTree_;
 
     std::vector<real> pdiscard_;
     int32_t size_;
@@ -59,6 +68,9 @@ class Dictionary {
         std::vector<int32_t>& line,
         const std::vector<int32_t>& hashes,
         int32_t n) const;
+    void addLabel(const std::string& word,
+                  entry_type type,
+                  std::vector<std::string>& labels);
 
 
    public:
@@ -88,7 +100,7 @@ class Dictionary {
         std::vector<int32_t>&,
         std::vector<std::string>&) const;
     uint32_t hash(const std::string& str) const;
-    void add(const std::string&);
+    entry_type add(const std::string&);
     bool readWord(std::istream&, std::string&) const;
     void readFromFile(std::istream&);
     std::string getLabel(int32_t) const;

@@ -39,7 +39,9 @@ int32_t Dictionary::find(const std::string& w, uint32_t h) const {
   return id;
 }
 
-void Dictionary::add(const std::string& w) {
+entry_type Dictionary::add(const std::string& w) {
+
+  entry_type ret;
   int32_t h = find(w);
   ntokens_++;
   if (word2int_[h] == -1) {
@@ -49,9 +51,13 @@ void Dictionary::add(const std::string& w) {
     e.type = getType(w);
     words_.push_back(e);
     word2int_[h] = size_++;
+    ret = e.type;
   } else {
     words_[word2int_[h]].count++;
+    ret = words_[word2int_[h]].type;
   }
+
+  return ret;
 }
 
 int32_t Dictionary::nwords() const {
@@ -214,11 +220,36 @@ bool Dictionary::readWord(std::istream& in, std::string& word) const
   return !word.empty();
 }
 
+void Dictionary::addLabel(const std::string& word,
+                          entry_type type,
+                          std::vector<std::string>& labels){
+    if(args_->subCat_){
+        if(type == entry_type::label){
+            labels.push_back(word);
+        }else if(word == EOS && labels.size() > 0){
+            auto parent = labelTree_[word];
+            parent.level = 0 ;
+            parent.label = labels[0];
+            for(int i = 1; i < labels.size(); i++){
+                auto node = labelTree_[word];
+                node.level = i;
+                node.label = labels[i];
+                parent.childs.insert(labels[i]);
+                parent = node;
+            }
+            labels.clear();
+        }
+    }
+}
+
 void Dictionary::readFromFile(std::istream& in) {
   std::string word;
   int64_t minThreshold = 1;
+  std::vector<std::string> labels;
   while (readWord(in, word)) {
-    add(word);
+    auto type = add(word);
+    addLabel(word,type,labels);
+
     if (ntokens_ % 1000000 == 0 && args_->verbose > 1) {
       std::cerr << "\rRead " << ntokens_  / 1000000 << "M words" << std::flush;
     }
