@@ -257,10 +257,21 @@ void FastText::quantize(std::shared_ptr<Args> qargs) {
 void FastText::supervised(Model& model, real lr,
                           const std::vector<int32_t>& line,
                           const std::vector<int32_t>& labels) {
-  if (labels.size() == 0 || line.size() == 0) return;
-  std::uniform_int_distribution<> uniform(0, labels.size() - 1);
-  int32_t i = uniform(model.rng);
-  model.update(line, labels[i], lr);
+  if (labels.size() == 0 || line.size() == 0){
+    return;
+  } else if(args_->subCat_ && labels.size() > 1){
+    std::vector<int32_t> src(line);
+    model.update(line, labels[0], lr);
+    for (int i =1; i < labels.size(); i++){
+      src.push_back(labels[i - 1]);
+      model.update(line, labels[i], lr);
+    }
+  }else {
+    std::uniform_int_distribution<> uniform(0, labels.size() - 1);
+    int32_t i = uniform(model.rng);
+    model.update(line, labels[i], lr);
+
+  }
 }
 
 void FastText::cbow(Model& model, real lr,

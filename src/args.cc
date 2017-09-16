@@ -129,6 +129,8 @@ void Args::parseArgs(const std::vector<std::string>& args) {
       label = std::string(args[ai + 1]);
     } else if (args[ai] == "-verbose") {
       verbose = std::stoi(args[ai + 1]);
+    } else if (args[ai] == "-subCat") {
+      subCat_ = true; ai--;
     } else if (args[ai] == "-pretrainedVectors") {
       pretrainedVectors = std::string(args[ai + 1]);
     } else if (args[ai] == "-saveOutput") {
@@ -202,6 +204,7 @@ void Args::printTrainingHelp() {
     << "  -loss               loss function {ns, hs, softmax} [" << lossToString(loss) << "]\n"
     << "  -thread             number of threads [" << thread << "]\n"
     << "  -pretrainedVectors  pretrained word vectors for supervised learning ["<< pretrainedVectors <<"]\n"
+    << "  [-subCat]             for supervised learning hierachy category"
     << "  -saveOutput         whether output params should be saved [" << saveOutput << "]\n";
 }
 

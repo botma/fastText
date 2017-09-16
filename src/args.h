@@ -50,6 +50,8 @@ class Args {
     std::string pretrainedVectors;
     int saveOutput;
 
+    bool subCat_;
+
     bool qout;
     bool retrain;
     bool qnorm;
