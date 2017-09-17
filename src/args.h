@@ -50,7 +50,7 @@ class Args {
     std::string pretrainedVectors;
     int saveOutput;
 
-    bool subCat_;
+    bool subLabel;
 
     bool qout;
     bool retrain;

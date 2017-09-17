@@ -255,7 +255,9 @@ void Dictionary::addLabel(const std::string& word,
    }
 }
 
-void Dictionary::makeLabelTree( const std::map<std::string, LabelTreeNode >& labelTree){
+void Dictionary::makeLabelTree(const std::map<std::string, LabelTreeNode> & labelTree){
+
+
   std::queue<std::string> q;
   for(auto it = labelTree.begin(); it != labelTree.end(); ++ it){
     if(it->second.level == 0){
@@ -267,7 +269,6 @@ void Dictionary::makeLabelTree( const std::map<std::string, LabelTreeNode >& lab
       }
     }
   }
-
 
   while(! q.empty()){
     auto w = q.front();
@@ -287,6 +288,7 @@ void Dictionary::makeLabelTree( const std::map<std::string, LabelTreeNode >& lab
     q.pop();
   }
 
+  assert (labelTrees_.size() == nlabels_);
 }
 
 void Dictionary::readFromFile(std::istream& in) {
@@ -296,7 +298,7 @@ void Dictionary::readFromFile(std::istream& in) {
   std::vector<std::string> labels;
   while (readWord(in, word)) {
     auto type = add(word);
-    if(args_->subCat_){
+    if(args_->subLabel){
       addLabel(word,type, labelTree, labels);
     }
     if (ntokens_ % 1000000 == 0 && args_->verbose > 1) {
@@ -310,7 +312,7 @@ void Dictionary::readFromFile(std::istream& in) {
   threshold(args_->minCount, args_->minCountLabel);
   initTableDiscard();
   initNgrams();
-  if(args_ ->subCat_){
+  if(args_ ->subLabel){
     makeLabelTree(labelTree);
   }
   if (args_->verbose > 0) {
@@ -454,10 +456,22 @@ void Dictionary::save(std::ostream& out) const {
     out.write((char*) &(e.count), sizeof(int64_t));
     out.write((char*) &(e.type), sizeof(entry_type));
   }
+  if(args_->subLabel){
+    for(auto it = labelTrees_.begin(); it != labelTrees_.end(); ++it){
+      out.write((char *) &it->first, sizeof(int32_t));
+      auto childs = it->second;
+      int32_t childSize = childs.size();
+      out.write((char *) &childSize, sizeof(int32_t));
+      for(auto cit = childs.begin(); cit != childs.end(); ++ cit){
+        out.write((char *) &(*cit), sizeof(int32_t));
+      }
+    }
+  }
   for (const auto pair : pruneidx_) {
     out.write((char*) &(pair.first), sizeof(int32_t));
     out.write((char*) &(pair.second), sizeof(int32_t));
   }
+
 }
 
 void Dictionary::load(std::istream& in) {
@@ -478,6 +492,23 @@ void Dictionary::load(std::istream& in) {
     in.read((char*) &e.type, sizeof(entry_type));
     words_.push_back(e);
     word2int_[find(e.word)] = i;
+  }
+
+  if(args_->subLabel){
+    labelTrees_.clear();
+    for(int32_t i = 0; i < nlabels_; ++i){
+      int32_t first;
+      int32_t childSize;
+      in.read((char *) &first,  sizeof(int32_t));
+      in.read((char *) &childSize, sizeof(int32_t));
+      std::set<int32_t> childs;
+      for(int32_t j = 0; j < childSize; ++j){
+        int32_t c;
+        in.read((char *) &c,  sizeof(int32_t));
+        childs.insert(c);
+      }
+      labelTrees_[first] = childs;
+    }
   }
   pruneidx_.clear();
   for (int32_t i = 0; i < pruneidx_size_; i++) {
