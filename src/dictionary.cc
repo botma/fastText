@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <iterator>
 #include <cmath>
+#include <queue>
 
 namespace fasttext {
 
@@ -221,35 +222,83 @@ bool Dictionary::readWord(std::istream& in, std::string& word) const
 }
 
 void Dictionary::addLabel(const std::string& word,
-                          entry_type type,
-                          std::vector<std::string>& labels){
-    if(args_->subCat_){
-        if(type == entry_type::label){
-            labels.push_back(word);
-        }else if(word == EOS && labels.size() > 0){
-            auto parent = labelTree_[word];
-            parent.level = 0 ;
-            parent.label = labels[0];
-            for(int i = 1; i < labels.size(); i++){
-                auto node = labelTree_[word];
-                node.level = i;
-                node.label = labels[i];
-                parent.childs.insert(labels[i]);
-                parent = node;
-            }
-            labels.clear();
-        }
+             const entry_type type,
+             std::map<std::string, LabelTreeNode>& labelTree,
+             std::vector<std::string>& labels) const {
+
+   if(type == entry_type::label){
+       labels.push_back(word);
+   }else if(word == Dictionary::EOS && labels.size() > 0){
+       LabelTreeNode & p = labelTree[word];
+       p.label = word;
+       if(p.level != 0){
+         std::cerr << "find same label[" << word << "] in different level" << std::endl;
+         exit(-1);
+       }
+       for(int i = 1; i < labels.size() - 1; i++){
+         std::string cword = labels[i];
+         p.childs.insert(cword);
+         if( labelTree.find( cword ) == labelTree.end() ){
+           LabelTreeNode& c = labelTree[cword];
+           c.level = i;
+           c.label = word;
+         }
+         LabelTreeNode & c = labelTree[cword];
+         if( c.level != i ){
+           std::cerr << "find same label in different level" << std::endl;
+           exit(-1);
+         }
+         p = c;
+
+       }
+       labels.clear();
+   }
+}
+
+void Dictionary::makeLabelTree( const std::map<std::string, LabelTreeNode >& labelTree){
+  std::queue<std::string> q;
+  for(auto it = labelTree.begin(); it != labelTree.end(); ++ it){
+    if(it->second.level == 0){
+      int32_t h = find(it->first);
+      if(h >=0 ){
+        int id = word2int_[h];
+        rootLabels_.push_back(id);
+        q.push(it->first);
+      }
     }
+  }
+
+
+  while(! q.empty()){
+    auto w = q.front();
+    int h = find(w);
+    if( h >=0 ){
+      int id =  word2int_[h];
+      std::set<int32_t>& chs = labelTrees_[id] ;
+      auto childs = labelTree.at(w).childs;
+      for(auto it = childs.begin(); it != childs.end(); ++it){
+        h = find(*it);
+        if( h >= 0 ){
+          chs.insert(word2int_[h]);
+          q.push(*it);
+        }
+      }
+    }
+    q.pop();
+  }
+
 }
 
 void Dictionary::readFromFile(std::istream& in) {
   std::string word;
   int64_t minThreshold = 1;
+  std::map<std::string, LabelTreeNode > labelTree;
   std::vector<std::string> labels;
   while (readWord(in, word)) {
     auto type = add(word);
-    addLabel(word,type,labels);
-
+    if(args_->subCat_){
+      addLabel(word,type, labelTree, labels);
+    }
     if (ntokens_ % 1000000 == 0 && args_->verbose > 1) {
       std::cerr << "\rRead " << ntokens_  / 1000000 << "M words" << std::flush;
     }
@@ -261,6 +310,9 @@ void Dictionary::readFromFile(std::istream& in) {
   threshold(args_->minCount, args_->minCountLabel);
   initTableDiscard();
   initNgrams();
+  if(args_ ->subCat_){
+    makeLabelTree(labelTree);
+  }
   if (args_->verbose > 0) {
     std::cerr << "\rRead " << ntokens_  / 1000000 << "M words" << std::endl;
     std::cerr << "Number of words:  " << nwords_ << std::endl;
@@ -473,4 +525,8 @@ void Dictionary::prune(std::vector<int32_t>& idx) {
   words_.erase(words_.begin() + size_, words_.end());
 }
 
+
+const std::set<int32_t>& Dictionary::getSubLabels(int32_t parent) const{
+   return labelTrees_.at(parent);
+}
 }

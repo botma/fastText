@@ -35,11 +35,12 @@ struct entry {
   std::vector<int32_t> subwords;
 };
 
-struct CatNode{
+struct LabelTreeNode{
 	std::string label;
 	int32_t level;
 	std::set<std::string> childs;
 };
+
 
 class Dictionary {
   private:
@@ -54,7 +55,8 @@ class Dictionary {
     std::shared_ptr<Args> args_;
     std::vector<int32_t> word2int_;
     std::vector<entry> words_;
-    std::map<std::string, CatNode> labelTree_;
+    std::map<int32_t, std::set<int32_t> > labelTrees_;
+    std::vector<int32_t> rootLabels_;
 
     std::vector<real> pdiscard_;
     int32_t size_;
@@ -68,10 +70,13 @@ class Dictionary {
         std::vector<int32_t>& line,
         const std::vector<int32_t>& hashes,
         int32_t n) const;
-    void addLabel(const std::string& word,
-                  entry_type type,
-                  std::vector<std::string>& labels);
 
+    void addLabel(const std::string& word,
+         const entry_type type,
+         std::map<std::string, LabelTreeNode >& labelTree,
+         std::vector<std::string>& labels) const;
+
+    void makeLabelTree( const std::map<std::string, LabelTreeNode>& labelTree);
 
    public:
     static const std::string EOS;
@@ -113,6 +118,7 @@ class Dictionary {
                     std::vector<int32_t>&, std::minstd_rand&) const;
     void threshold(int64_t, int64_t);
     void prune(std::vector<int32_t>&);
+    const std::set<int32_t>& getSubLabels(int32_t parent) const;
 };
 
 }
