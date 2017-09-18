@@ -164,7 +164,7 @@ void FastText::loadModel(std::istream& in) {
     output_->load(in);
   }
 
-  model_ = std::make_shared<Model>(input_, output_, args_, 0);
+  model_ = std::make_shared<Model>(dict_, input_, output_, args_, 0);
   model_->quant_ = quant_;
   model_->setQuantizePointer(qinput_, qoutput_, args_->qout);
 
@@ -259,7 +259,7 @@ void FastText::supervised(Model& model, real lr,
                           const std::vector<int32_t>& labels) {
   if (labels.size() == 0 || line.size() == 0){
     return;
-  } else if(args_->subCat_ && labels.size() > 1){
+  } else if(args_->subLabel && labels.size() > 1){
     std::vector<int32_t> src(line);
     model.update(line, labels[0], lr);
     for (int i =1; i < labels.size(); i++){
@@ -314,7 +314,7 @@ void FastText::test(std::istream& in, int32_t k) {
     dict_->getLine(in, line, labels, model_->rng);
     if (labels.size() > 0 && line.size() > 0) {
       std::vector<std::pair<real, int32_t>> modelPredictions;
-      model_->predict(line, k, modelPredictions);
+      model_->predict(line, k,false, modelPredictions);
       for (auto it = modelPredictions.cbegin(); it != modelPredictions.cend(); it++) {
         if (std::find(labels.begin(), labels.end(), it->second) != labels.end()) {
           precision += 1.0;
@@ -331,7 +331,7 @@ void FastText::test(std::istream& in, int32_t k) {
   std::cerr << "Number of examples: " << nexamples << std::endl;
 }
 
-void FastText::predict(std::istream& in, int32_t k,
+void FastText::predict(std::istream& in, int32_t k, bool subLabel,
                        std::vector<std::pair<real,std::string>>& predictions) const {
   std::vector<int32_t> words, labels;
   predictions.clear();
@@ -340,16 +340,16 @@ void FastText::predict(std::istream& in, int32_t k,
   Vector hidden(args_->dim);
   Vector output(dict_->nlabels());
   std::vector<std::pair<real,int32_t>> modelPredictions;
-  model_->predict(words, k, modelPredictions, hidden, output);
+  model_->predict(words, k,subLabel, modelPredictions, hidden, output);
   for (auto it = modelPredictions.cbegin(); it != modelPredictions.cend(); it++) {
     predictions.push_back(std::make_pair(it->first, dict_->getLabel(it->second)));
   }
 }
 
-void FastText::predict(std::istream& in, int32_t k, bool print_prob) {
+void FastText::predict(std::istream& in, int32_t k, bool subLabel, bool print_prob) {
   std::vector<std::pair<real,std::string>> predictions;
   while (in.peek() != EOF) {
-    predict(in, k, predictions);
+    predict(in, k, subLabel, predictions);
     if (predictions.empty()) {
       std::cout << std::endl;
       continue;
@@ -530,7 +530,7 @@ void FastText::trainThread(int32_t threadId) {
   std::ifstream ifs(args_->input);
   utils::seek(ifs, threadId * utils::size(ifs) / args_->thread);
 
-  Model model(input_, output_, args_, threadId);
+  Model model(dict_, input_, output_, args_, threadId);
   if (args_->model == model_name::sup) {
     model.setTargetCounts(dict_->getCounts(entry_type::label));
   } else {
@@ -649,7 +649,7 @@ void FastText::train(std::shared_ptr<Args> args) {
   } else {
     trainThread(0);
   }
-  model_ = std::make_shared<Model>(input_, output_, args_, 0);
+  model_ = std::make_shared<Model>(dict_, input_, output_, args_, 0);
 
   saveModel();
   saveVectors();

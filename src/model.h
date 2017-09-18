@@ -20,6 +20,7 @@
 #include "vector.h"
 #include "qmatrix.h"
 #include "real.h"
+#include "dictionary.h"
 
 #define SIGMOID_TABLE_SIZE 512
 #define MAX_SIGMOID 8
@@ -37,6 +38,8 @@ struct Node {
 
 class Model {
   private:
+
+    std::shared_ptr<Dictionary> dict_;
     std::shared_ptr<Matrix> wi_;
     std::shared_ptr<Matrix> wo_;
     std::shared_ptr<QMatrix> qwi_;
@@ -69,7 +72,8 @@ class Model {
     static const int32_t NEGATIVE_TABLE_SIZE = 10000000;
 
   public:
-    Model(std::shared_ptr<Matrix>, std::shared_ptr<Matrix>,
+    Model(std::shared_ptr<Dictionary> ,
+          std::shared_ptr<Matrix>, std::shared_ptr<Matrix>,
           std::shared_ptr<Args>, int32_t);
     ~Model();
 
@@ -78,10 +82,10 @@ class Model {
     real hierarchicalSoftmax(int32_t, real);
     real softmax(int32_t, real);
 
-    void predict(const std::vector<int32_t>&, int32_t,
+    void predict(const std::vector<int32_t>&, int32_t, bool,
                  std::vector<std::pair<real, int32_t>>&,
                  Vector&, Vector&) const;
-    void predict(const std::vector<int32_t>&, int32_t,
+    void predict(const std::vector<int32_t>&, int32_t, bool,
                  std::vector<std::pair<real, int32_t>>&);
     void dfs(int32_t, int32_t, real,
              std::vector<std::pair<real, int32_t>>&,
@@ -91,7 +95,14 @@ class Model {
     void update(const std::vector<int32_t>&, int32_t, real);
     void computeHidden(const std::vector<int32_t>&, Vector&) const;
     void computeOutputSoftmax(Vector&, Vector&) const;
+    void computeOutputSoftmax(Vector& hidden,
+                              const std::set<int64_t> ,
+                              Vector& ) const ;
     void computeOutputSoftmax();
+
+    void findSubLabel(int32_t k,
+                      std::vector<std::pair<real, int32_t>>& heap,
+                      Vector& hidden, Vector& output) const ;
 
     void setTargetCounts(const std::vector<int64_t>&);
     void initTableNegatives(const std::vector<int64_t>&);

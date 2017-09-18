@@ -53,6 +53,8 @@ void printPredictUsage() {
     << "  <model>      model filename\n"
     << "  <test-data>  test data filename (if -, read from stdin)\n"
     << "  <k>          (optional; 1 by default) predict top k labels\n"
+    << "  <sub-label>  (optinal; false by default) predict subLabel, \n"
+    << "                if this set then k will be the label level.\n"
     << std::endl;
 }
 
@@ -136,7 +138,7 @@ void test(const std::vector<std::string>& args) {
 }
 
 void predict(const std::vector<std::string>& args) {
-  if (args.size() < 4 || args.size() > 5) {
+  if (args.size() < 4 || args.size() > 6) {
     printPredictUsage();
     exit(EXIT_FAILURE);
   }
@@ -144,6 +146,12 @@ void predict(const std::vector<std::string>& args) {
   if (args.size() >= 5) {
     k = std::stoi(args[4]);
   }
+  bool subLabel = false;
+  if(args.size() >= 6){
+    subLabel = true;
+  }
+
+
 
   bool print_prob = args[1] == "predict-prob";
   FastText fasttext;
@@ -151,14 +159,14 @@ void predict(const std::vector<std::string>& args) {
 
   std::string infile(args[3]);
   if (infile == "-") {
-    fasttext.predict(std::cin, k, print_prob);
+    fasttext.predict(std::cin, k, subLabel, print_prob);
   } else {
     std::ifstream ifs(infile);
     if (!ifs.is_open()) {
       std::cerr << "Input file cannot be opened!" << std::endl;
       exit(EXIT_FAILURE);
     }
-    fasttext.predict(ifs, k, print_prob);
+    fasttext.predict(ifs, k, subLabel, print_prob);
     ifs.close();
   }
 

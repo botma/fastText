@@ -264,7 +264,7 @@ void Dictionary::makeLabelTree(const std::map<std::string, LabelTreeNode> & labe
       int32_t h = find(it->first);
       if(h >=0 ){
         int id = word2int_[h];
-        rootLabels_.push_back(id);
+        rootLabels_.insert(id);
         q.push(it->first);
       }
     }
@@ -275,7 +275,7 @@ void Dictionary::makeLabelTree(const std::map<std::string, LabelTreeNode> & labe
     int h = find(w);
     if( h >=0 ){
       int id =  word2int_[h];
-      std::set<int32_t>& chs = labelTrees_[id] ;
+      std::set<int64_t>& chs = labelTrees_[id] ;
       auto childs = labelTree.at(w).childs;
       for(auto it = childs.begin(); it != childs.end(); ++it){
         h = find(*it);
@@ -501,7 +501,7 @@ void Dictionary::load(std::istream& in) {
       int32_t childSize;
       in.read((char *) &first,  sizeof(int32_t));
       in.read((char *) &childSize, sizeof(int32_t));
-      std::set<int32_t> childs;
+      std::set<int64_t> childs;
       for(int32_t j = 0; j < childSize; ++j){
         int32_t c;
         in.read((char *) &c,  sizeof(int32_t));
@@ -557,7 +557,8 @@ void Dictionary::prune(std::vector<int32_t>& idx) {
 }
 
 
-const std::set<int32_t>& Dictionary::getSubLabels(int32_t parent) const{
+const std::set<int64_t>& Dictionary::getSubLabels(int64_t parent) const{
+   if(parent < 0) return rootLabels_;
    return labelTrees_.at(parent);
 }
 }

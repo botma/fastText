@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <ostream>
+#include <set>
 
 #include "real.h"
 
@@ -43,6 +44,8 @@ class Vector {
     void addRow(const Matrix&, int64_t, real);
     void mul(const QMatrix&, const Vector&);
     void mul(const Matrix&, const Vector&);
+    void mul(const QMatrix&, const Vector&, const std::set<int64_t>&);
+    void mul(const Matrix&, const Vector&, const std::set<int64_t>&);
     int64_t argmax();
 };
 

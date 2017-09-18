@@ -97,6 +97,32 @@ void Vector::mul(const Matrix& A, const Vector& vec) {
   }
 }
 
+void Vector::mul(const Matrix& A, const Vector& vec, const std::set<int64_t>& index) {
+  assert(A.m_ == m_);
+  assert(A.n_ == vec.m_);
+  for (int64_t i = 0; i < m_; i++) {
+    if( index.empty() || index.find(i) != index.end() ){
+      data_[i] = A.dotRow(vec, i);
+    }else{
+      data_[i] = -1000000;
+    }
+
+  }
+}
+
+void Vector::mul(const QMatrix& A, const Vector& vec, const std::set<int64_t>& index) {
+  assert(A.getM() == m_);
+  assert(A.getN() == vec.m_);
+  for (int64_t i = 0; i < m_; i++) {
+    if( index.empty() || index.find(i) != index.end() ){
+      data_[i] = A.dotRow(vec, i);
+    }else{
+      data_[i] = -1000000;
+    }
+
+  }
+}
+
 void Vector::mul(const QMatrix& A, const Vector& vec) {
   assert(A.getM() == m_);
   assert(A.getN() == vec.m_);

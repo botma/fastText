@@ -15,13 +15,15 @@
 
 namespace fasttext {
 
-Model::Model(std::shared_ptr<Matrix> wi,
+Model::Model(std::shared_ptr<Dictionary> dict,
+             std::shared_ptr<Matrix> wi,
              std::shared_ptr<Matrix> wo,
              std::shared_ptr<Args> args,
              int32_t seed)
   : hidden_(args->dim), output_(wo->m_),
   grad_(args->dim), rng(seed), quant_(false)
 {
+  dict_ = dict;
   wi_ = wi;
   wo_ = wo;
   args_ = args;
@@ -84,6 +86,26 @@ real Model::hierarchicalSoftmax(int32_t target, real lr) {
   return loss;
 }
 
+void Model::computeOutputSoftmax(Vector& hidden,
+                                 const std::set<int64_t> filter,
+                                 Vector& output) const {
+  if (quant_ && args_->qout) {
+    output.mul(*qwo_, hidden,filter);
+  } else {
+    output.mul(*wo_, hidden, filter);
+  }
+  real max = output[0], z = 0.0;
+  for (int32_t i = 0; i < osz_; i++) {
+    max = std::max(output[i], max);
+  }
+  for (int32_t i = 0; i < osz_; i++) {
+    output[i] = exp(output[i] - max);
+    z += output[i];
+  }
+  for (int32_t i = 0; i < osz_; i++) {
+    output[i] /= z;
+  }
+}
 void Model::computeOutputSoftmax(Vector& hidden, Vector& output) const {
   if (quant_ && args_->qout) {
     output.mul(*qwo_, hidden);
@@ -137,23 +159,29 @@ bool Model::comparePairs(const std::pair<real, int32_t> &l,
   return l.first > r.first;
 }
 
-void Model::predict(const std::vector<int32_t>& input, int32_t k,
+void Model::predict(const std::vector<int32_t>& input, int32_t k, bool subLabel,
                     std::vector<std::pair<real, int32_t>>& heap,
                     Vector& hidden, Vector& output) const {
   assert(k > 0);
   heap.reserve(k + 1);
   computeHidden(input, hidden);
-  if (args_->loss == loss_name::hs) {
-    dfs(k, 2 * osz_ - 2, 0.0, heap, hidden);
-  } else {
-    findKBest(k, heap, hidden, output);
+  if(subLabel){
+    findSubLabel(k, heap, hidden, output);
+  }else{
+    if (args_->loss == loss_name::hs) {
+      dfs(k, 2 * osz_ - 2, 0.0, heap, hidden);
+    } else {
+      findKBest(k, heap, hidden, output);
+    }
+    std::sort_heap(heap.begin(), heap.end(), comparePairs);
   }
-  std::sort_heap(heap.begin(), heap.end(), comparePairs);
 }
 
-void Model::predict(const std::vector<int32_t>& input, int32_t k,
+
+
+void Model::predict(const std::vector<int32_t>& input, int32_t k, bool subLabel,
                     std::vector<std::pair<real, int32_t>>& heap) {
-  predict(input, k, heap, hidden_, output_);
+  predict(input, k, subLabel, heap, hidden_, output_);
 }
 
 void Model::findKBest(int32_t k, std::vector<std::pair<real, int32_t>>& heap,
@@ -171,6 +199,22 @@ void Model::findKBest(int32_t k, std::vector<std::pair<real, int32_t>>& heap,
     }
   }
 }
+
+void Model::findSubLabel(int32_t k,
+                         std::vector<std::pair<real, int32_t> >& heap,
+                         Vector& hidden, Vector& output) const {
+    std::set<int64_t>& filter =
+        const_cast<std::set<int64_t>& > (dict_->getSubLabels(-1));
+    for(int i = 0; i < k ; ++i){
+      computeOutputSoftmax(hidden,filter, output);
+      int64_t ind = output.argmax();
+      heap.push_back(std::make_pair(log(output[ind]),ind));
+      filter = dict_->getSubLabels(ind + dict_->nwords());
+      if(filter.empty()) return;
+
+    }
+}
+
 
 void Model::dfs(int32_t k, int32_t node, real score,
                 std::vector<std::pair<real, int32_t>>& heap,

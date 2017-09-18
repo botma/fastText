@@ -55,8 +55,8 @@ class Dictionary {
     std::shared_ptr<Args> args_;
     std::vector<int32_t> word2int_;
     std::vector<entry> words_;
-    std::map<int32_t, std::set<int32_t> > labelTrees_;
-    std::vector<int32_t> rootLabels_;
+    std::map<int64_t, std::set<int64_t> > labelTrees_;
+    std::set<int64_t> rootLabels_;
 
     std::vector<real> pdiscard_;
     int32_t size_;
@@ -118,7 +118,7 @@ class Dictionary {
                     std::vector<int32_t>&, std::minstd_rand&) const;
     void threshold(int64_t, int64_t);
     void prune(std::vector<int32_t>&);
-    const std::set<int32_t>& getSubLabels(int32_t parent) const;
+    const std::set<int64_t>& getSubLabels(int64_t parent) const;
 };
 
 }
