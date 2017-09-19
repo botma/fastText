@@ -203,15 +203,14 @@ void Model::findKBest(int32_t k, std::vector<std::pair<real, int32_t>>& heap,
 void Model::findSubLabel(int32_t k,
                          std::vector<std::pair<real, int32_t> >& heap,
                          Vector& hidden, Vector& output) const {
-    std::set<int64_t>& filter =
-        const_cast<std::set<int64_t>& > (dict_->getSubLabels(-1));
+    int parent = -1;
     for(int i = 0; i < k ; ++i){
+      const std::set<int64_t>& filter = dict_->getSubLabels(parent);
+      if(filter.empty()) return;
       computeOutputSoftmax(hidden,filter, output);
       int64_t ind = output.argmax();
       heap.push_back(std::make_pair(log(output[ind]),ind));
-      filter = dict_->getSubLabels(ind + dict_->nwords());
-      if(filter.empty()) return;
-
+      parent = ind + dict_->nwords();
     }
 }
 
